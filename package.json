@@ -1,6 +1,6 @@
 {
   "name": "@rush-cms/mcp",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Installs an AI context file for frontend development using a specific API.",
   "bin": {
     "install-frontend-guidelines": "./bin/install-frontend-guidelines.js"
