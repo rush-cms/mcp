@@ -1,12 +1,48 @@
 {
   "name": "@rush-cms/mcp",
   "version": "1.0.0",
-  "description": "Installs an AI context file for frontend development using a specific API.",
+  "description": "Installs an AI context file for frontend development for Rush CMS.",
+  "keywords": [
+    "rush-cms",
+    "mcp",
+    "ai",
+    "claude",
+    "cursor",
+    "copilot",
+    "nextjs",
+    "inertia",
+    "headless-cms",
+    "context",
+    "prompt",
+    "cli"
+  ],
+  "homepage": "https://github.com/rush-cms/mcp#readme",
+  "bugs": {
+    "url": "https://github.com/rush-cms/mcp/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rush-cms/mcp.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "bin": {
-    "install-frontend-guidelines": "./bin/install-frontend-guidelines.js"
+    "install-frontend-guidelines": "./bin/install-frontend-guidelines.js",
+    "mcp-server": "./bin/mcp-server.js"
+  },
+  "files": [
+    "bin",
+    "templates"
+  ],
+  "scripts": {
+    "test": "vitest"
   },
   "dependencies": {
-    "inquirer": "^9.2.20"
+    "inquirer": "^12.10.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
   },
   "publishConfig": {
     "access": "public"

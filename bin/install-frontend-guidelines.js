@@ -1,134 +1,124 @@
 #!/usr/bin/env node
 
-const fs = require('fs')
-const path = require('path')
+const { validateNodeVersion } = require('./utils/version-check');
+const { logger } = require('./utils/logger');
+const { TEMPLATES, AI_CLIENTS } = require('./config/constants');
+const { installTemplate } = require('./lib/template-installer');
+const {
+  showHelp,
+  isValidTemplate,
+  parseClientsList,
+  createChoices,
+} = require('./lib/cli-helpers');
 
-const colors = {
-  reset: '\x1b[0m',
-  red: '\x1b[31m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  cyan: '\x1b[36m',
-  dim: '\x1b[2m',
-}
+// Check Node.js version before proceeding
+validateNodeVersion('18.0.0');
 
-const templates = {
-  nextjs: {
-    fileName: 'context-nextjs.md',
-    name: 'Next.js (TypeScript)',
-  },
-  inertia: {
-    fileName: 'context-inertia.md',
-    name: 'Inertia.js + React',
-  },
-}
-
-function logError(message) {
-  console.error(`${colors.red}${message}${colors.reset}`)
-}
-
-function logWarning(message) {
-  console.warn(`${colors.yellow}${message}${colors.reset}`)
-}
-
-function logSuccess(message) {
-  console.log(`${colors.green}${message}${colors.reset}`)
-}
-
-function logInfo(message) {
-  console.log(`${colors.cyan}${message}${colors.reset}`)
-}
-
-function showHelp() {
-  console.log('Usage: node install-frontend-guidelines.js [template]')
-  console.log('\nInstalls a context file for a specific frontend framework to guide AI assistance.')
-  console.log('\nIf no template is provided, it will launch an interactive prompt.')
-  console.log('\nOptions:')
-  console.log('  [template]    The name of the template to install.')
-  console.log('  -h, --help    Show this help message.')
-  console.log('\nAvailable templates:')
-  Object.keys(templates).forEach(key => {
-    console.log(`  - ${key}: ${colors.dim}${templates[key].name}${colors.reset}`)
-  })
-}
-
-function installTemplate(templateKey) {
-  const template = templates[templateKey]
-  if (!template) {
-    logError(`❌ Template "${templateKey}" not found.`)
-
-    process.exit(1)
-  }
-
-  const destFileName = `API_CONTEXT_${templateKey.toUpperCase()}.md`
-  const sourcePath = path.join(__dirname, '..', 'templates', template.fileName)
-  const destPath = path.join(process.cwd(), destFileName)
-
-  if (fs.existsSync(destPath)) {
-    logWarning(`⚠️  File ${destFileName} already exists in this directory. No action taken.`)
-
-    return
-  }
-
+/**
+ * Starts interactive mode using inquirer
+ * @param {boolean} forceUpdate - Whether to force update existing files
+ * @returns {Promise<void>}
+ */
+const startInteractiveMode = async (forceUpdate = false) => {
   try {
-    fs.copyFileSync(sourcePath, destPath)
-    logSuccess(`✅ AI context file "${destFileName}" created successfully!`)
-    logInfo('   Copy the content of this file at the beginning of your conversation with an AI agent.')
-  } catch (error) {
-    logError(`❌ Error creating context file: ${error.message}`)
+    const { default: inquirer } = await import('inquirer');
 
-    process.exit(1)
-  }
-}
-
-async function startInteractiveMode() {
-  try {
-    const { default: inquirer } = await import('inquirer')
-
-    const { chosenTemplate } = await inquirer.prompt([
+    const { chosenTemplate, chosenClients } = await inquirer.prompt([
       {
         type: 'list',
         name: 'chosenTemplate',
         message: 'Which frontend framework will you be using?',
-        choices: Object.keys(templates).map(key => ({
-          name: templates[key].name,
-          value: key,
-        })),
+        choices: createChoices(TEMPLATES),
       },
-    ])
+      {
+        type: 'checkbox',
+        name: 'chosenClients',
+        message: 'Which AI clients do you want to install context files for?',
+        choices: createChoices(AI_CLIENTS),
+      },
+    ]);
 
-    installTemplate(chosenTemplate)
+    if (chosenClients.length === 0) {
+      logger.warning('⚠️ No AI clients selected. No files were created.');
+      return;
+    }
+
+    installTemplate(chosenTemplate, chosenClients, forceUpdate);
   } catch (error) {
-    logError('❌ Failed to start interactive mode. Is the \'inquirer\' package installed?')
-    logError(error.message)
-
-    process.exit(1)
+    logger.error('❌ Failed to start interactive mode.');
+    logger.error(`Error: ${error.message}`);
+    process.exit(1);
   }
-}
+};
 
-function main() {
-  const templateArg = process.argv[2]
+/**
+ * Parses command line arguments and executes appropriate action
+ */
+const main = async () => {
+  const args = process.argv.slice(2);
 
+  // Check for help flag
+  if (args.some((arg) => arg === '--help' || arg === '-h')) {
+    showHelp();
+    return;
+  }
+
+  // Check for update flag
+  const forceUpdate = args.some((arg) => arg === '--update');
+  const filteredArgs = args.filter((arg) => arg !== '--update');
+
+  const [templateArg, clientsArg] = filteredArgs;
+
+  // No arguments - start interactive mode
   if (!templateArg) {
-    startInteractiveMode()
-
-    return
+    await startInteractiveMode(forceUpdate);
+    return;
   }
 
-  if (templateArg === '--help' || templateArg === '-h') {
-    showHelp()
-
-    return
+  // Validate template
+  if (!isValidTemplate(templateArg)) {
+    logger.error(`❌ Template "${templateArg}" not recognized.`);
+    logger.log('\nRun with --help to see the list of available templates.');
+    process.exit(1);
   }
 
-  if (!templates[templateArg]) {
-    logError(`❌ Template "${templateArg}" not recognized.`)
-    console.log(`\nRun with --help to see the list of available templates.`)
-
-    process.exit(1)
+  // No clients specified - start interactive mode
+  if (!clientsArg) {
+    await startInteractiveMode(forceUpdate);
+    return;
   }
 
-  installTemplate(templateArg)
+  // Parse and install for specified clients
+  const clients = parseClientsList(clientsArg);
+
+  if (clients.length === 0) {
+    logger.warning('⚠️ No valid clients specified.');
+    await startInteractiveMode(forceUpdate);
+    return;
+  }
+
+  try {
+    if (forceUpdate) {
+      logger.info('ℹ️ Update mode enabled - existing files will be overwritten.');
+    }
+    installTemplate(templateArg, clients, forceUpdate);
+  } catch (error) {
+    logger.error(`❌ Installation failed: ${error.message}`);
+    process.exit(1);
+  }
+};
+
+// Run main if executed directly
+if (require.main === module) {
+  main().catch((error) => {
+    logger.error(`❌ Unexpected error: ${error.message}`);
+    process.exit(1);
+  });
 }
 
-main()
+// Export for testing
+module.exports = {
+  installTemplate,
+  aiClients: AI_CLIENTS,
+  templates: TEMPLATES,
+};

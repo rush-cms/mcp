@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Test artifacts
+__test_output__/
+__test_mcp_output__/
+.CLAUDE.md
+.claude/
+.cursor/
+.junie/
+.codex/
+.github/copilot-instructions.md
+
+# Coverage
+coverage/
+*.lcov
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
