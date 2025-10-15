@@ -1,0 +1,13 @@
+{
+  "name": "rush-cms-mcp",
+  "version": "1.0.0",
+  "description": "Installs an AI context file for frontend development using a specific API.",
+  "bin": {
+    "install-frontend-guidelines": "./bin/install-frontend-guidelines.js"
+  },
+  "dependencies": {
+    "inquirer": "^9.2.20"
+  },
+  "author": "Rafhael Marsigli",
+  "license": "MIT"
+}
